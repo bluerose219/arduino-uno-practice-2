@@ -1,0 +1,127 @@
+실습1) LED 깜빡이기 빵판버전
+blink_pin8.ino
+
+실습2) 가변저항
+pot_dimmer.ino
+
+(강사님코드)  pot_dimmer.ino
+const byte POT_PIN = A0;
+const byte LED_PIN = 9;  // Uno에서 ~ 표시가 있는 PWM 핀
+unsigned long lastReport = 0;
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(LED_PIN, OUTPUT);
+  Serial.println(F("Potentiometer ready: ADC 0..1023 -> PWM 0..255"));
+}
+
+void loop() {
+  const int raw = analogRead(POT_PIN);
+  const int pwm = map(raw, 0, 1023, 0, 255);
+  analogWrite(LED_PIN, pwm);
+
+  const unsigned long now = millis();
+  if (now - lastReport >= 100) {
+    lastReport = now;
+    Serial.print(F("ADC:")); Serial.print(raw);
+    Serial.print(F(" PWM:")); Serial.print(pwm);
+    Serial.print(F(" Voltage:")); Serial.println(raw * (5.0 / 1023.0), 2);
+  }
+}
+
+
+실습3) sound 센서
+A0 아날로그 입력  / G GND  /  D0 출력
+##A0는 A0에 연결. D0는 2번에 연결 LED는 9번 연결 G는 GND, +는 5v에 연결
+
+
+실습4) soundtwoLED
+소리가 안들리면 빨간색led on
+소리가 들리는 중이면, 초록색 led on, 빨간색 led off
+soundtwoLED.ino
+
+
+실습5) FND 세그먼트
+(강사님코드)
+// 실습 3: 버튼을 누를 때마다 한 자리 7세그먼트의 숫자 증가
+// 공통 캐소드(COM = GND), A~G 각각에 330Ω 저항을 사용합니다.
+const byte SEGMENT_PINS[] = {2, 3, 4, 5, 6, 7, 8};  // A, B, C, D, E, F, G
+const byte BUTTON_PIN = 10;
+const byte LED_PIN = 11;
+const byte DIGITS[] = {
+  0x3F, 0x06, 0x5B, 0x4F, 0x66,
+  0x6D, 0x7D, 0x07, 0x7F, 0x6F
+};
+byte number = 0;
+int lastReading = HIGH;
+int stableButton = HIGH;
+unsigned long changedAt = 0;
+
+void showNumber() {
+  for (byte segment = 0; segment < 7; segment++) {
+    digitalWrite(SEGMENT_PINS[segment], bitRead(DIGITS[number], segment));
+  }
+  digitalWrite(LED_PIN, number == 0 ? HIGH : LOW);
+  Serial.print(F("Digit:")); Serial.println(number);
+}
+
+void setup() {
+  Serial.begin(9600);
+  for (byte pin : SEGMENT_PINS) pinMode(pin, OUTPUT);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  pinMode(LED_PIN, OUTPUT);
+  Serial.println(F("Counter ready: press button once per number"));
+  showNumber();
+}
+
+void loop() {
+  const int reading = digitalRead(BUTTON_PIN);
+  const unsigned long now = millis();
+  if (reading != lastReading) changedAt = now;
+  lastReading = reading;
+  if (now - changedAt >= 35 && reading != stableButton) {
+    stableButton = reading;
+    if (stableButton == LOW) {
+      number = (number + 1) % 10;
+      showNumber();
+    }
+  }
+}
+
+
+| Arduino | 빵판과 직렬 저항 | Wokwi 핀 / 부품 핀 이름 | 3161AS 다리 번호 | 5161AS 다리 번호 |
+| --- | --- | --- | --- | --- |
+| D2 | 2j → 2f → 330Ω → 2b → 2a | A (맨 위) | 10번 | 7번 |
+| D3 | 5j → 5f → 330Ω → 5b → 5a | B (오른쪽 위) | 9번 | 6번 |
+| D4 | 8j → 8f → 330Ω → 8b → 8a | C (오른쪽 아래) | 8번 | 4번 |
+| D5 | 11j → 11f → 330Ω → 11b → 11a | D (맨 아래) | 5번 | 2번 |
+| D6 | 14j → 14f → 330Ω → 14b → 14a | E (왼쪽 아래) | 4번 | 1번 |
+| D7 | 17j → 17f → 330Ω → 17b → 17a | F (왼쪽 위) | 2번 | 9번 |
+| D8 | 20j → 20f → 330Ω → 20b → 20a | G (가운데) | 3번 | 10번 |
+| GND | Arduino GND → 아래쪽 (-) 레일 → 각 COM 다리 | COM | 1번·6번 모두 | 3번·8번 모두 |
+| 미연결 | 미연결 | DP (소수점) | 7번 | 5번 |
+| D10 | 25j → 버튼 한쪽(25e·25f) | 버튼 입력 | 해당 없음 | 해당 없음 |
+| GND 레일 | 23j → 버튼 다른 쪽(23e·23f) | 버튼 접지 | 해당 없음 | 해당 없음 |
+| D11 | 29j → 29f → 220Ω → 29b → 29a | LED A | 해당 없음 | 해당 없음 |
+| GND 레일 | 28e → 28a | LED C | 해당 없음 | 해당 없음 |
+
+
+실습6) 세그먼트 응용
+사용품 : led 3개(빨강, 주황, 초록), 세그먼트, 스위치
+
+문제
+내부(아두이노)에서 10(임의로 변경가능)초 카운트 다운을 시작하며, 카운트 다운에따라 빨, 주, 초 순서대로 바뀐다.
+2초부터는 초록색이 점등되어야하며, 초록색일때 스위치를 누른다
+초록색일때 스위치를 누를시 세그먼트에 +1이 되고, 그외의 상태일때 -1을하여 세그먼트에 표기를 한다.
+총 9점이 되었을때 모든 led가 반짝거리며 3초후에 초기화가 된다.
+0점 이하로 떨어지는 경우가 없어야한다.
+
+
+<LED3개를 사용 할건데 13번 12번 11번에 입력해줘. 내부(아두이노)에서 10초 카운트 다운을 시작하며, 카운트 다운에 따라 13번 12번 11번 LED 순서대로 바뀐다. 2초 부터는 11번이 점등되어야 하고, 11번이 점등되어있을 때 스위치를 누르면 세그먼트에 +1이 되고, 그 외의 상태일때 누르면 -1을 하여 세그먼트에 표기를 한다. 총 9점이 되었을 때 모든 LED가 반짝거리며 3초후에 초기화가 된다. 0점 이하로 떨어지는 경우가 없어야 한다. fndled 파일 따로 만들어서 ino파일에 코드 만들어줘>
+fndled.ino
+
+
+
+
+
+
